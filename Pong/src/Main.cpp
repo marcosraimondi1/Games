@@ -1,4 +1,6 @@
+#include "classes/Ball/Ball.hpp"
 #include "classes/Bat/Bat.hpp"
+#include <SFML/Audio.hpp>
 #include <SFML/Graphics.hpp>
 #include <cstdlib>
 #include <sstream>
@@ -15,6 +17,9 @@ int main()
 	// Create bat
 	Bat bat(1920 / 2, 1080 - 20);
 
+	// Create ball
+	Ball ball(1920 / 2, 0);
+
 	// Create HUD
 	Font font;
 	font.loadFromFile("assets/fonts/DS-DIGIT.ttf");
@@ -23,6 +28,17 @@ int main()
 	hud.setCharacterSize(75);
 	hud.setFillColor(Color::White);
 	hud.setPosition(20, 20);
+
+	// Sounds
+	SoundBuffer bounceBuffer;
+	bounceBuffer.loadFromFile("assets/sound/chop.wav");
+	Sound bounce;
+	bounce.setBuffer(bounceBuffer);
+
+	SoundBuffer gameoverBuffer;
+	gameoverBuffer.loadFromFile("assets/sound/death.wav");
+	Sound gameover;
+	gameover.setBuffer(gameoverBuffer);
 
 	// Clock
 	Clock clock;
@@ -68,10 +84,55 @@ int main()
 		// Update Bat
 		bat.update(dt);
 
+		// Update Ball
+		ball.update(dt);
+
 		// Update Hud
 		std::stringstream ss;
 		ss << "Score: " << score << " Lives: " << lives;
 		hud.setString(ss.str());
+
+		// Check collitions
+		// BOTTOM
+		if (ball.getPosition().top > window.getSize().y)
+		{
+			// reverse the ball direction
+			ball.reboundBottom();
+
+			// Remove a life
+			lives--;
+
+			// Check for zero lives
+			if (lives < 1)
+			{
+				// reset score
+				score = 0;
+				// reset lives
+				lives = 3;
+				gameover.play();
+			}
+		}
+		// TOP
+		if (ball.getPosition().top < 0)
+		{
+			ball.reboundBatOrTop();
+			bounce.play();
+		}
+
+		// SIDES
+		if (ball.getPosition().left < 0 || ball.getPosition().left + ball.getPosition().width > window.getSize().x)
+		{
+			ball.reboundSides();
+			bounce.play();
+		}
+
+		// BAT
+		if (ball.getPosition().intersects(bat.getPosition()))
+		{
+			ball.reboundBatOrTop();
+			bounce.play();
+			score++;
+		}
 
 		/*
 		*****************************
@@ -83,6 +144,7 @@ int main()
 		window.clear();
 		window.draw(hud);
 		window.draw(bat.getShape());
+		window.draw(ball.getShape());
 		window.display();
 	}
 
